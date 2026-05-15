@@ -1,6 +1,6 @@
 {
   "name": "recoup-content-plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Generate, edit, and publish content for artists across Recoup's surfaces.",
   "author": {
     "name": "Recoup",
@@ -19,6 +19,5 @@
     "artist-marketing"
   ],
   "skills": "./skills/",
-  "agents": "./agents/",
   "commands": "./commands/"
 }

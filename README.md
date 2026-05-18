@@ -52,6 +52,8 @@ The agent picks up the `short-video` skill, resolves the artist's `account_id`, 
 | ------- | -------------- |
 | `/recoup-content-create` | **Default.** End-to-end async run from artist name to finished video + caption. The front door for first installs and "make me a video" requests. |
 
+> **v0.3.0 spec migration:** `/recoup-content-create` was migrated from `commands/recoup-content-create.md` to `skills/recoup-content-create/SKILL.md` per Anthropic's newer skills-not-commands convention (the official `claude-plugins-official` example-plugin declares the `commands/*.md` layout legacy). Both files exist in this release for back-compat; the legacy command file will be removed in a future version.
+
 More command coverage (templates browse, single-step overrides, demo workspace) is on the roadmap.
 
 ## Skills

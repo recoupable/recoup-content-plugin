@@ -5,6 +5,8 @@ description: End-to-end run that produces a 9:16 social-ready short-form music v
 
 # Recoup Content Create
 
+> **Note:** This command was migrated to `skills/recoup-content-create/SKILL.md` in v0.3.0 per Anthropic's official guidance that `commands/*.md` is legacy in favor of `skills/<name>/SKILL.md`. Both layouts are loaded identically by Claude Code; this file is preserved for backwards compatibility and as a reference for the legacy layout. New work should edit `skills/recoup-content-create/SKILL.md`. Plan to delete this file in a future release.
+
 The anchor command. Use this on first install to confirm the plugin works end-to-end, and as the default front door for "make a video for [artist]" requests.
 
 ## What it does

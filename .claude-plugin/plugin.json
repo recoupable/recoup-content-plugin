@@ -1,6 +1,6 @@
 {
   "name": "recoup-content-plugin",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Claude Code plugin for Recoup content workflows — generating, editing, and publishing content for artists across Recoup's surfaces.",
   "author": {
     "name": "Recoup",

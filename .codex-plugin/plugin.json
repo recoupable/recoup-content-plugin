@@ -1,6 +1,6 @@
 {
   "name": "recoup-content-plugin",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "description": "Generate, edit, and publish content for artists across Recoup's surfaces.",
   "author": {
     "name": "Recoup",

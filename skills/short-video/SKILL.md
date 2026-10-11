@@ -21,21 +21,20 @@ For sourcing the underlying `song.mp3`, see `references/song-sourcing.md` — it
 `POST /api/content/video` is synchronous; provider latency can exceed a host command timeout. Prefer the async hosted workflow in short-lived shells, retain its run ID, and read its status in a later command if necessary.
 
 ```bash
-# Trigger
-RUN_IDS=$(curl -sS -X POST "https://api.recoupable.dev/api/content/create" \
-  -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
-  -d "$(jq -n --arg artist "$ARTIST_ACCOUNT_ID" --arg template "$TEMPLATE" \
-        '{artist_account_id: $artist, template: $template}')" \
-  | jq -r '.runIds[]')
+BASE="https://api.recoupable.dev/api"
+CREATED=$(curl --fail-with-body -sS -X POST "$BASE/content/create" -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
+  -d "$(jq -n --arg a "$ARTIST_ACCOUNT_ID" --arg t "$TEMPLATE" '{artist_account_id:$a, template:$t}')") || exit 1
+RUN_ID=$(printf '%s' "$CREATED" | jq -er '.runIds[0]') || exit 1
+printf 'Run ID: %s\n' "$RUN_ID"
 
-# Poll with a bounded wait. Reuse RUN_ID later if this shell times out.
-RUN_ID=$(echo "$RUN_IDS" | head -1)
 for ATTEMPT in $(seq 1 60); do
-  STATUS=$(curl --fail-with-body -sS "https://api.recoupable.dev/api/tasks/runs?runId=$RUN_ID" \
-    -H "x-api-key: $RECOUP_API_KEY" | jq -r '.runs[0].status') || exit 1
+  RUN=$(curl --fail-with-body -sS -H "x-api-key: $RECOUP_API_KEY" "$BASE/tasks/runs?runId=$RUN_ID") || exit 1
+  STATUS=$(printf '%s' "$RUN" | jq -er '.runs[0].status') || exit 1
   case "$STATUS" in
     COMPLETED) break ;;
-    FAILED|CANCELED|CRASHED|SYSTEM_FAILURE|TIMED_OUT|EXPIRED) exit 1 ;;
+    FAILED|CANCELED|CRASHED|SYSTEM_FAILURE|INTERRUPTED)
+      printf '%s' "$RUN" | jq '.runs[0].error // {status: .runs[0].status}' >&2
+      exit 1 ;;
   esac
   sleep 10
 done
@@ -58,7 +57,7 @@ correct or create a new account because a roster is empty. OAuth MCP credentials
 do not automatically create a REST shell key. Obtain an authorized REST credential
 through the platform setup flow when using these curl examples.
 
-List organizations, inspect the returned `organizations` array and
+List organizations, inspect the returned array of organization memberships and
 select the intended `organization_id` before setting `ORG_ID`. The response
 entry `id` is a membership-row identifier and must not be used as `ORG_ID`. Then
 list the roster:

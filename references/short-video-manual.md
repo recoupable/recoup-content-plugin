@@ -8,7 +8,7 @@ The same five-step recipe as the async pipeline, but run by hand or step by step
 
 - An auth credential for `api.recoupable.com`. Two options. Pick one and use it for every call below:
   - **API key** (`recoup_sk_…`, recommended for sandbox / agent use): pass as `-H "x-api-key: $RECOUP_API_KEY"`.
-    - Real-email signup: same endpoint with a real email mails a 6-digit code; complete with `POST /api/agents/verify`. See [Agents](https://developers.recoupable.com/agents).
+    - Real-email signup: same endpoint with a real email mails a 6-digit code; complete with `POST /api/agents/verify`. See [Agents](https://docs.recoupable.dev/agents).
   - **Privy access token** (for end-user flows in chat/UI): pass as `-H "Authorization: Bearer $RECOUP_ACCESS_TOKEN"`.
   - The examples below use `x-api-key`. Substitute `Authorization: Bearer …` if you're using a Privy token.
 - `$ARTIST_NAME`, `$SONG_TITLE`, `$SONG_LYRICS_CLIP` (a 1–2 sentence mood snippet)
@@ -57,19 +57,19 @@ EOF
 Templates carry the prompt, reference images, and styling that drive the rest of the chain. You can't write a good Step 2 prompt without them. List, pick, then fetch detail:
 
 ```bash
-curl -sS "https://api.recoupable.com/api/content/templates" \
+curl -sS "https://api.recoupable.dev/api/content/templates" \
   -H "x-api-key: $RECOUP_API_KEY" \
   | jq -r '.templates[] | "\(.id): \(.description)"'
 
 TEMPLATE="album-record-store"   # or artist-caption-{bedroom,outside,stage}
 
-TEMPLATE_DETAIL=$(curl -sS "https://api.recoupable.com/api/content/templates/$TEMPLATE" \
+TEMPLATE_DETAIL=$(curl -sS "https://api.recoupable.dev/api/content/templates/$TEMPLATE" \
   -H "x-api-key: $RECOUP_API_KEY")
 ```
 
 **Templates that list "Requires: face image"** (e.g. `artist-caption-bedroom`) will fall back to their bundled reference images and produce a generic-likeness subject if you don't supply one. They don't 400. Pass `$REFERENCE_IMAGE_URL` if you want the model to preserve a specific artist's likeness, or omit it for a stock-feeling result.
 
-See [List Templates](https://developers.recoupable.com/api-reference/content/templates) and [Template Detail](https://developers.recoupable.com/api-reference/content/template-detail).
+See [List Templates](https://docs.recoupable.dev/api-reference/content/templates) and [Template Detail](https://docs.recoupable.dev/api-reference/content/template-detail).
 
 **After:** write `template` into frontmatter, tick the box.
 
@@ -82,11 +82,11 @@ PROMPT=$(echo "$TEMPLATE_DETAIL" | jq -r '.image.prompt')
 REFS=$(echo "$TEMPLATE_DETAIL" | jq -c '[.image.reference_images[]?]')
 # $REFS is 5–15 URLs depending on the template; select at most 10 unique references via image_urls
 
-IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.com/api/content/image" \
+IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.dev/api/content/image" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg prompt "$PROMPT" --argjson refs "$REFS" \
         --arg ref "$REFERENCE_IMAGE_URL" \
-        '{prompt: $prompt, image_urls: (([$ref] + $refs) | map(select(length > 0)) | unique | .[:10])}')" \
+        '{prompt: $prompt, image_urls: (([$ref] + $refs) | map(select(length > 0)) | reduce .[] as $url ([]; if index($url) then . else . + [$url] end) | .[:10])}')" \
   | jq -r '.imageUrl')
 ```
 
@@ -94,7 +94,7 @@ IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.com/api/content/image" \
 
 **Avoid:** prompts that aim for a real artist's likeness. Veo (used in step 3) rejects celebrity-likeness images with a 422. Use the template's prompt as-is and let the reference images carry the style.
 
-See [Generate Image](https://developers.recoupable.com/api-reference/content/generate-image).
+See [Generate Image](https://docs.recoupable.dev/api-reference/content/generate-image).
 
 **After:** write `imageUrl`, tick the box.
 
@@ -104,7 +104,7 @@ Same endpoint for both, swap `type`. Skip if you don't need the resolution bump.
 
 ```bash
 # Image (after step 2)
-IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.com/api/content/upscale" \
+IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.dev/api/content/upscale" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg url "$IMAGE_URL" '{url: $url, type: "image"}')" \
   | jq -r '.url')
@@ -112,16 +112,16 @@ IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.com/api/content/upscale" \
 # Video (after step 3): same call, type: "video", reassign $VIDEO_URL
 ```
 
-See [Upscale](https://developers.recoupable.com/api-reference/content/upscale).
+See [Upscale](https://docs.recoupable.dev/api-reference/content/upscale).
 
 ## Step 3: Generate the video
 
-Pass the image, prompt and integer duration 5–15 to H3. Do not send audio_url or mode to /content/video. For hosted lipsync, use /content/create with lipsync true; its worker selects and trims the song clip. Local muxing does not create lip alignment.
+Pass the image, prompt and integer duration 5–15 to H3. Do not send audio_url or mode to /content/video. For hosted lipsync, use /content/create with lipsync true; the coordinated worker repair selects and trims the song clip after release; verify the actual artifact before claiming the repaired path works. Local muxing does not create lip alignment.
 
 ```bash
 MOTION=$(echo "$TEMPLATE_DETAIL" | jq -r '.video.movements[0] // "Slow camera drift, subtle subject motion"')
 
-VIDEO_URL=$(curl -sS --max-time 360 -X POST "https://api.recoupable.com/api/content/video" \
+VIDEO_URL=$(curl -sS --max-time 360 -X POST "https://api.recoupable.dev/api/content/video" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg image "$IMAGE_URL" --arg prompt "$MOTION" \
         '{image_url: $image, prompt: $prompt, duration: 15, resolution: "768P"}')" \
@@ -130,7 +130,7 @@ VIDEO_URL=$(curl -sS --max-time 360 -X POST "https://api.recoupable.com/api/cont
 
 This call routinely takes 60–180s. **From a short-shell agent, use the async pipeline in `skills/short-video/SKILL.md` instead.** From a long-lived shell, output is a 15s clip. Step 5 loops it to song length.
 
-See [Generate Video](https://developers.recoupable.com/api-reference/content/generate-video).
+See [Generate Video](https://docs.recoupable.dev/api-reference/content/generate-video).
 
 **After:** write `videoUrl`, tick the box.
 
@@ -139,7 +139,7 @@ See [Generate Video](https://developers.recoupable.com/api-reference/content/gen
 ```bash
 TOPIC="Song: \"$SONG_TITLE\". Lyrics: \"$SONG_LYRICS_CLIP\". Artist: $ARTIST_NAME."
 
-CAPTION_RESPONSE=$(curl -sS -X POST "https://api.recoupable.com/api/content/caption" \
+CAPTION_RESPONSE=$(curl -sS -X POST "https://api.recoupable.dev/api/content/caption" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg topic "$TOPIC" --arg template "$TEMPLATE" \
         '{topic: $topic, template: $template, length: "short"}')")
@@ -153,7 +153,7 @@ CAPTION_FONT_SIZE=$(echo "$CAPTION_RESPONSE" | jq -r '.maxFontSize  // 48')
 
 `length` accepts `"short"` (default), `"medium"`, `"long"`, or `"none"` to skip. The four styling fields (`font`, `color`, `borderColor`, `maxFontSize`) are template-driven hints. Step 5 wires them into ffmpeg's `drawtext` so the burned-in caption matches the template's brand.
 
-See [Generate Caption](https://developers.recoupable.com/api-reference/content/generate-caption).
+See [Generate Caption](https://docs.recoupable.dev/api-reference/content/generate-caption).
 
 **After:** write `captionText`, tick the box.
 

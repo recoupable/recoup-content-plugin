@@ -31,7 +31,7 @@ claude plugin install https://github.com/recoupable/recoup-content-plugin
 After install, set your Recoup API key in the shell:
 
 ```bash
-export RECOUP_API_KEY="recoup_sk_..."   # see https://developers.recoupable.com/agents
+export RECOUP_API_KEY="recoup_sk_..."   # see https://docs.recoupable.dev/agents
 ```
 
 Then in a new chat:
@@ -76,7 +76,7 @@ Long-form prose lives in `references/` so `SKILL.md` files stay scannable for th
 
 ## Required environment
 
-- `RECOUP_API_KEY` (`recoup_sk_…`) — obtain via `POST /api/agents/signup`. See [Agents](https://developers.recoupable.com/agents).
+- `RECOUP_API_KEY` (`recoup_sk_…`) — obtain via `POST /api/agents/signup`. See [Agents](https://docs.recoupable.dev/agents).
 - For the manual walkthrough's local compose step: `ffmpeg` on PATH.
 
 ## Structure
@@ -98,11 +98,12 @@ recoup-content-plugin/
 └── README.md
 ```
 
+Artifact QA requires recorded image, video and audio inspection evidence before delivery.
+
 ## Roadmap
 
 - `/recoup-content-templates` — browse and inspect content templates without running a full pipeline.
 - `/recoup-content-demo` — bundled fixture so first-install users see output before pointing the plugin at a real account.
-- Artifact QA requires recorded inspection evidence. No Stop hook enforces visual/audio quality.
 - More skills covering artist-brand-voice editing and Recoup-surface publishing.
 
 ## Support

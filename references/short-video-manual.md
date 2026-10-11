@@ -6,7 +6,7 @@ The same five-step recipe as the async pipeline, but run by hand or step by step
 
 ## Prerequisites
 
-- An auth credential for `api.recoupable.com`. Two options. Pick one and use it for every call below:
+- An auth credential for `api.recoupable.dev`. Two options. Pick one and use it for every call below:
   - **API key** (`recoup_sk_…`, recommended for sandbox / agent use): pass as `-H "x-api-key: $RECOUP_API_KEY"`.
     - Real-email signup: same endpoint with a real email mails a 6-digit code; complete with `POST /api/agents/verify`. See [Agents](https://docs.recoupable.dev/agents).
   - **Privy access token** (for end-user flows in chat/UI): pass as `-H "Authorization: Bearer $RECOUP_ACCESS_TOKEN"`.

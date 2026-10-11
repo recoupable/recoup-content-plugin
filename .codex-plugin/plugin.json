@@ -1,6 +1,6 @@
 {
   "name": "recoup-content-plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Generate, edit, and publish content for artists across Recoup's surfaces.",
   "author": {
     "name": "Recoup",
@@ -23,10 +23,13 @@
   "interface": {
     "displayName": "Recoup Content",
     "shortDescription": "Generate, edit, and publish artist content for Recoup",
-    "longDescription": "A content workflows plugin for Recoup. Bundles skills and commands that help AI agents draft, edit, and publish content for artists across Recoup's surfaces — captions, blurbs, release copy, social posts, and more.",
+    "longDescription": "A content workflows plugin for Recoup. Bundles skills and commands that help AI agents draft, edit, and publish content for artists across Recoup's surfaces \u2014 captions, blurbs, release copy, social posts, and more.",
     "developerName": "Recoup",
     "category": "Music",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://recoupable.com"
   }
 }

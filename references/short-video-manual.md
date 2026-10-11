@@ -8,7 +8,6 @@ The same five-step recipe as the async pipeline, but run by hand or step by step
 
 - An auth credential for `api.recoupable.com`. Two options. Pick one and use it for every call below:
   - **API key** (`recoup_sk_…`, recommended for sandbox / agent use): pass as `-H "x-api-key: $RECOUP_API_KEY"`.
-    - One-shot agent: `POST /api/agents/signup` with an `agent+{unique}@recoupable.com` email returns the key immediately.
     - Real-email signup: same endpoint with a real email mails a 6-digit code; complete with `POST /api/agents/verify`. See [Agents](https://developers.recoupable.com/agents).
   - **Privy access token** (for end-user flows in chat/UI): pass as `-H "Authorization: Bearer $RECOUP_ACCESS_TOKEN"`.
   - The examples below use `x-api-key`. Substitute `Authorization: Bearer …` if you're using a Privy token.
@@ -81,13 +80,13 @@ Use the template's own prompt and reference images. Don't write your own from sc
 ```bash
 PROMPT=$(echo "$TEMPLATE_DETAIL" | jq -r '.image.prompt')
 REFS=$(echo "$TEMPLATE_DETAIL" | jq -c '[.image.reference_images[]?]')
-# $REFS is 5–15 URLs depending on the template; pass all of them via images[]
+# $REFS is 5–15 URLs depending on the template; select at most 10 unique references via image_urls
 
 IMAGE_URL=$(curl -sS -X POST "https://api.recoupable.com/api/content/image" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg prompt "$PROMPT" --argjson refs "$REFS" \
         --arg ref "$REFERENCE_IMAGE_URL" \
-        '{prompt: $prompt, images: $refs} + (if $ref == "" then {} else {reference_image_url: $ref} end)')" \
+        '{prompt: $prompt, image_urls: (([$ref] + $refs) | map(select(length > 0)) | unique | .[:10])}')" \
   | jq -r '.imageUrl')
 ```
 
@@ -117,7 +116,7 @@ See [Upscale](https://developers.recoupable.com/api-reference/content/upscale).
 
 ## Step 3: Generate the video
 
-Pass the image and a short motion prompt. For lipsync, also pass a presigned `audio_url` to a song clip and the model will animate the artist's mouth.
+Pass the image, prompt and integer duration 5–15 to H3. Do not send audio_url or mode to /content/video. For hosted lipsync, use /content/create with lipsync true; its worker selects and trims the song clip. Local muxing does not create lip alignment.
 
 ```bash
 MOTION=$(echo "$TEMPLATE_DETAIL" | jq -r '.video.movements[0] // "Slow camera drift, subtle subject motion"')
@@ -125,11 +124,11 @@ MOTION=$(echo "$TEMPLATE_DETAIL" | jq -r '.video.movements[0] // "Slow camera dr
 VIDEO_URL=$(curl -sS --max-time 360 -X POST "https://api.recoupable.com/api/content/video" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg image "$IMAGE_URL" --arg prompt "$MOTION" \
-        '{image_url: $image, prompt: $prompt, aspect_ratio: "9:16"}')" \
+        '{image_url: $image, prompt: $prompt, duration: 15, resolution: "768P"}')" \
   | jq -r '.videoUrl')
 ```
 
-This call routinely takes 60–180s. **From a short-shell agent, use the async pipeline in `skills/short-video/SKILL.md` instead.** From a long-lived shell, output is an 8s clip. Step 5 loops it to song length.
+This call routinely takes 60–180s. **From a short-shell agent, use the async pipeline in `skills/short-video/SKILL.md` instead.** From a long-lived shell, output is a 15s clip. Step 5 loops it to song length.
 
 See [Generate Video](https://developers.recoupable.com/api-reference/content/generate-video).
 

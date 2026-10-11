@@ -18,48 +18,61 @@ For sourcing the underlying `song.mp3`, see `references/song-sourcing.md` — it
 
 ## Async pipeline (preferred for agents)
 
-`POST /api/content/video` is synchronous and routinely takes 60–180s. Most agent shells (Claude Cowork, OpenAI tool calls, etc.) cap a single command at 30–60s and kill background processes when the shell exits. The manual walkthrough is effectively un-runnable from those environments. Use the async path instead — same five steps, run server-side.
+`POST /api/content/video` is synchronous; provider latency can exceed a host command timeout. Prefer the async hosted workflow in short-lived shells, retain its run ID, and read its status in a later command if necessary.
 
 ```bash
 # Trigger
-RUN_IDS=$(curl -sS -X POST "https://api.recoupable.com/api/content/create" \
+RUN_IDS=$(curl -sS -X POST "https://api.recoupable.dev/api/content/create" \
   -H "x-api-key: $RECOUP_API_KEY" -H "Content-Type: application/json" \
   -d "$(jq -n --arg artist "$ARTIST_ACCOUNT_ID" --arg template "$TEMPLATE" \
         '{artist_account_id: $artist, template: $template}')" \
   | jq -r '.runIds[]')
 
-# Poll (every ~10s) until COMPLETED / FAILED / CANCELED / CRASHED
+# Poll with a bounded wait. Reuse RUN_ID later if this shell times out.
 RUN_ID=$(echo "$RUN_IDS" | head -1)
-until STATUS=$(curl -sS "https://api.recoupable.com/api/tasks/runs?runId=$RUN_ID" \
-                 -H "x-api-key: $RECOUP_API_KEY" \
-               | jq -r '.runs[0].status') && \
-      [[ "$STATUS" =~ ^(COMPLETED|FAILED|CANCELED|CRASHED)$ ]]; do
+for ATTEMPT in $(seq 1 60); do
+  STATUS=$(curl --fail-with-body -sS "https://api.recoupable.dev/api/tasks/runs?runId=$RUN_ID" \
+    -H "x-api-key: $RECOUP_API_KEY" | jq -r '.runs[0].status') || exit 1
+  case "$STATUS" in
+    COMPLETED) break ;;
+    FAILED|CANCELED|CRASHED|SYSTEM_FAILURE|TIMED_OUT|EXPIRED) exit 1 ;;
+  esac
   sleep 10
 done
+[ "$STATUS" = COMPLETED ] || { echo "Still pending: $RUN_ID"; exit 2; }
 
 # Read the output
-curl -sS "https://api.recoupable.com/api/tasks/runs?runId=$RUN_ID" \
+curl -sS "https://api.recoupable.dev/api/tasks/runs?runId=$RUN_ID" \
   -H "x-api-key: $RECOUP_API_KEY" \
   | jq '.runs[0].output'
 # -> { videoSourceUrl, imageUrl, captionText, template, lipsync, audio: {...} }
 ```
 
-See [Tasks Runs](https://developers.recoupable.com/api-reference/tasks/runs) for the full status enum and the `CreateContentRunOutput` schema.
+See [Tasks Runs](https://docs.recoupable.dev/api-reference/tasks/runs) for the full status enum and the `CreateContentRunOutput` schema.
 
 ### Resolving `$ARTIST_ACCOUNT_ID`
 
-`POST /api/content/create` needs the artist's `account_id`. Three calls:
+`POST /api/content/create` needs the artist's `account_id`. Use the connected
+account and a user-selected organization; never assume the first organization is
+correct or create a new account because a roster is empty. OAuth MCP credentials
+do not automatically create a REST shell key. Obtain an authorized REST credential
+through the platform setup flow when using these curl examples.
+
+List organizations, inspect the returned `organizations` array and
+select the intended `organization_id` before setting `ORG_ID`. The response
+entry `id` is a membership-row identifier and must not be used as `ORG_ID`. Then
+list the roster:
 
 ```bash
-ORG_ID=$(curl -sS "https://api.recoupable.com/api/organizations" \
-  -H "x-api-key: $RECOUP_API_KEY" | jq -r '.organizations[0].id')
-
-ARTIST_ACCOUNT_ID=$(curl -sS "https://api.recoupable.com/api/artists?org_id=$ORG_ID" \
-  -H "x-api-key: $RECOUP_API_KEY" \
-  | jq -r --arg name "$ARTIST_NAME" '.artists[] | select(.name == $name) | .account_id')
+curl --fail-with-body -sS "https://api.recoupable.dev/api/organizations" \
+  -H "x-api-key: $RECOUP_API_KEY"
+# Set ORG_ID to the explicitly selected organization UUID.
+curl --fail-with-body -sS "https://api.recoupable.dev/api/artists?org_id=$ORG_ID" \
+  -H "x-api-key: $RECOUP_API_KEY"
+# Select the intended artist and set ARTIST_ACCOUNT_ID to its account_id.
 ```
 
-The artist record exposes both `id` and `account_id` (both UUIDs). Use **`account_id`** — `id` is the artist row's primary key, `account_id` is the underlying account that owns it. The two are easy to swap; you'll get a 404 from `/api/content/create` if you pass the wrong one.
+The artist record exposes both `id` and `account_id` (both UUIDs). Use **`account_id`** — `id` is the artist row's primary key, `account_id` is the underlying account that owns it. Do not substitute the artist row ID for the required account ID.
 
 ## When the agent should reach for the manual walkthrough
 

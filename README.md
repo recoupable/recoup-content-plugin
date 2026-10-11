@@ -63,7 +63,7 @@ Loaded automatically by description-matching when the agent recognizes the task:
 | Skill | What it does |
 | ----- | ------------ |
 | `short-video` | End-to-end playbook for producing a 9:16 music video. Two paths — async pipeline (preferred for agents) and a manual five-step recipe externalized to `references/`. |
-| `content-creation` | Atomic primitives for the `/api/content/*` surface — generate an image, generate a video (6 modes including lipsync), generate a caption, transcribe audio, edit, upscale, analyze. Use when you want one capability in isolation rather than the full recipe. |
+| `content-creation` | Atomic primitives for the `/api/content/*` surface — generate an image, generate house H3 video; hosted lipsync via the async preset, generate a caption, transcribe audio, edit, upscale, analyze. Use when you want one capability in isolation rather than the full recipe. |
 
 `short-video` is the **recipe**; `content-creation` is the **building blocks**. Pick the recipe when the user wants a finished deliverable, pick the building blocks when they want fine-grained control.
 
@@ -102,7 +102,7 @@ recoup-content-plugin/
 
 - `/recoup-content-templates` — browse and inspect content templates without running a full pipeline.
 - `/recoup-content-demo` — bundled fixture so first-install users see output before pointing the plugin at a real account.
-- `hooks/` — a `SessionStart` hook that validates `RECOUP_API_KEY` and `ffmpeg` presence, and a `Stop` hook that prevents the agent from claiming "video ready" without a non-zero-byte `.mp4`.
+- Artifact QA requires recorded inspection evidence. No Stop hook enforces visual/audio quality.
 - More skills covering artist-brand-voice editing and Recoup-surface publishing.
 
 ## Support
